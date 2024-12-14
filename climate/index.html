@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Climate Monitoring</title>
+  <link rel="stylesheet" href="masterstyles.css">
+</head>
+<body>
+  <h1>Climate Monitoring</h1>
+  <div id="output">Loading...</div>
+
+  <script>
+    function formatKey(key) {
+      const words = key.replace(/_/g, ' ').split(' ');
+      return words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const output = document.getElementById('output');
+      
+      const gistRawURL = 'https://gist.githubusercontent.com/dburkeio/2cc17bb2acb1864d2fdedf9367bea709/raw/mydata.json';
+
+      fetch(gistRawURL)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error. Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          output.innerHTML = '';
+          var itemCount = 0;
+
+          Object.entries(data).forEach(([key, value]) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.classList.add('item');
+            itemDiv.id = 'item' + itemCount;
+
+            const keySpan = document.createElement('span');
+            keySpan.classList.add('key');
+            var keyText = formatKey(key);
+            keySpan.textContent = keyText;
+
+            const valueSpan = document.createElement('span');
+            valueSpan.classList.add('value');
+            valueSpan.textContent = `: ${JSON.stringify(value, null, 2)}`;
+
+            itemDiv.appendChild(keySpan);
+            itemDiv.appendChild(valueSpan);
+            output.appendChild(itemDiv);
+            itemCount++;
+          });
+        })
+        .catch(error => {
+          output.textContent = `Error: ${error.message}`;
+        });
+    });
+  </script>
+</body>
+</html>

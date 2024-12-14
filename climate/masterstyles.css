@@ -1,0 +1,26 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #4a4a4a;
+    color: white;
+}
+
+.item {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: #f9f9f9;
+    width: 45%;
+    float: left;
+    margin: 1%;
+    color: black;
+}
+
+.key {
+    font-weight: bold;
+}
+
+.value {
+    margin-left: 10px;
+}
