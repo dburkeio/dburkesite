@@ -13,7 +13,16 @@
   <script>
     function formatKey(key) {
       const words = key.replace(/_/g, ' ').split(' ');
-      return words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+      var wordsFormatted = words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+      if(wordsFormatted === 'Outside Temperature'){
+        wordsFormatted = 'Outside temperature (°F)';}
+      if(wordsFormatted === 'Outside Humidity'){
+        wordsFormatted = 'Outside humidity (%)';}
+      if(wordsFormatted === 'Inside Humidity'){
+        wordsFormatted = 'Inside humidity (%)';}
+      if(wordsFormatted === 'Inside Temperature'){
+        wordsFormatted = 'Inside temperature (°F)';}
+      return wordsFormatted;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
