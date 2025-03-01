@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spinning Wheel</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .wheel-container {
+            position: relative;
+        }
+        canvas {
+            border: 2px solid #000;
+            border-radius: 50%;
+            transition: transform 3s ease-out;
+        }
+        .arrow {
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            transform: translateY(-50%) rotate(90deg);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 20px solid red;
+        }
+        #result {
+            margin-top: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spinning Wheel</h1>
+    <input type="range" id="sectionSlider" min="2" max="12" value="6" step="1">
+    <span id="sectionCount">6</span>
+    <br>
+    <div class="wheel-container">
+        <div class="arrow"></div>
+        <canvas id="wheelCanvas" width="300" height="300"></canvas>
+    </div>
+    <br>
+    <button id="spinButton">Spin</button>
+    <p id="result">Result: -</p>
+
+    <script>
+        const canvas = document.getElementById("wheelCanvas");
+        const ctx = canvas.getContext("2d");
+        const slider = document.getElementById("sectionSlider");
+        const sectionCountDisplay = document.getElementById("sectionCount");
+        const spinButton = document.getElementById("spinButton");
+        const resultDisplay = document.getElementById("result");
+        let sections = parseInt(slider.value);
+        let angle = 0;
+
+        function drawWheel() {
+            const size = canvas.width / 2;
+            const colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#8E44AD", "#E74C3C"];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < sections; i++) {
+                ctx.beginPath();
+                ctx.moveTo(size, size);
+                ctx.arc(size, size, size, (i * 2 * Math.PI) / sections, ((i + 1) * 2 * Math.PI) / sections);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.stroke();
+                
+                // Add section numbers
+                const textAngle = (i * 2 * Math.PI) / sections + Math.PI / sections;
+                const textX = size + (size * 0.6) * Math.cos(textAngle);
+                const textY = size + (size * 0.6) * Math.sin(textAngle);
+                ctx.fillStyle = "#000";
+                ctx.font = "16px Arial";
+                ctx.fillText(i + 1, textX, textY);
+            }
+        }
+
+        slider.addEventListener("input", () => {
+            sections = parseInt(slider.value);
+            sectionCountDisplay.textContent = sections;
+            drawWheel();
+        });
+
+        spinButton.addEventListener("click", () => {
+            let rotation = 360 * 5 + Math.random() * 360;
+            angle += rotation;
+            canvas.style.transform = `rotate(${angle}deg)`;
+            
+            setTimeout(() => {
+                const sectionAngle = 360 / sections;
+                let finalAngle = (360 - (angle % 360)) % 360;
+                let landedSection = Math.floor(finalAngle / sectionAngle) + 1;
+                resultDisplay.textContent = `Result: Section ${landedSection}`;
+            }, 3000);
+        });
+
+        drawWheel();
+    </script>
+</body>
+</html>
