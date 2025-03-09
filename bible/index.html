@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible (ASV)</title>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        select, button {
+            font-size: 16px;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+        select {
+            background-color: #333;
+            color: #fff;
+        }
+        button {
+            background-color: #555;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #777;
+        }
+        #verses {
+            margin-top: 20px;
+            text-align: left;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        sup {
+            font-size: 0.8em;
+            vertical-align: super;
+            color: #aaa;
+        }
+    </style>
+    <script>
+        let bibleData = {};
+        
+        async function loadBible() {
+            const response = await fetch('asv_cleaned.json');
+            bibleData = await response.json();
+            populateBooks();
+        }
+        
+        function populateBooks() {
+            const bookSelect = document.getElementById('bookSelect');
+            bookSelect.innerHTML = '<option value="">Select a Book</option>';
+            for (let book in bibleData) {
+                let option = document.createElement('option');
+                option.value = book;
+                option.textContent = book;
+                bookSelect.appendChild(option);
+            }
+        }
+        
+        function populateChapters() {
+            const book = document.getElementById('bookSelect').value;
+            const chapterSelect = document.getElementById('chapterSelect');
+            chapterSelect.innerHTML = '<option value="">Select a Chapter</option>';
+            
+            if (book && bibleData[book]) {
+                for (let chapter in bibleData[book]) {
+                    let option = document.createElement('option');
+                    option.value = chapter;
+                    option.textContent = chapter;
+                    chapterSelect.appendChild(option);
+                }
+            }
+        }
+        
+        function displayVerses() {
+            const book = document.getElementById('bookSelect').value;
+            const chapter = document.getElementById('chapterSelect').value;
+            const verseContainer = document.getElementById('verses');
+            verseContainer.innerHTML = '';
+            
+            if (book && chapter && bibleData[book] && bibleData[book][chapter]) {
+                const verses = bibleData[book][chapter].slice(1); // Remove first verse
+                let verseText = '';
+                verses.forEach((verse, index) => {
+                    verseText += `<sup>${index + 1}</sup> ${verse} `;
+                });
+                verseContainer.innerHTML = verseText;
+            }
+        }
+        
+        function changeChapter(direction) {
+            const bookSelect = document.getElementById('bookSelect');
+            const chapterSelect = document.getElementById('chapterSelect');
+            let book = bookSelect.value;
+            let chapter = parseInt(chapterSelect.value);
+            
+            if (!book || isNaN(chapter)) return;
+            
+            const bookKeys = Object.keys(bibleData);
+            const currentBookIndex = bookKeys.indexOf(book);
+            const chapterKeys = Object.keys(bibleData[book]).map(Number).sort((a, b) => a - b);
+            
+            let newChapterIndex = chapterKeys.indexOf(chapter) + direction;
+            
+            if (newChapterIndex < 0) {
+                if (currentBookIndex > 0) {
+                    book = bookKeys[currentBookIndex - 1];
+                    const previousChapterKeys = Object.keys(bibleData[book]).map(Number).sort((a, b) => a - b);
+                    newChapterIndex = previousChapterKeys.length - 1;
+                    chapter = previousChapterKeys[newChapterIndex];
+                } else {
+                    return;
+                }
+            } else if (newChapterIndex >= chapterKeys.length) {
+                if (currentBookIndex < bookKeys.length - 1) {
+                    book = bookKeys[currentBookIndex + 1];
+                    newChapterIndex = 0;
+                    chapter = Object.keys(bibleData[book]).map(Number).sort((a, b) => a - b)[newChapterIndex];
+                } else {
+                    return;
+                }
+            } else {
+                chapter = chapterKeys[newChapterIndex];
+            }
+            
+            bookSelect.value = book;
+            populateChapters();
+            setTimeout(() => {
+                chapterSelect.value = chapter;
+                displayVerses();
+            }, 100);
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadBible);
+    </script>
+</head>
+<body>
+    <h1>Bible (ASV)</h1>
+    <label for="bookSelect">Book:</label>
+    <select id="bookSelect" onchange="populateChapters()"></select>
+    
+    <label for="chapterSelect">Chapter:</label>
+    <select id="chapterSelect" onchange="displayVerses()"></select>
+    
+    <button onclick="changeChapter(-1)">Previous</button>
+    <button onclick="changeChapter(1)">Next</button>
+    
+    <div id="verses"></div>
+</body>
+</html>
