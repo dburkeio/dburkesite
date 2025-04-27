@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jeopardy CSV Template</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    #downloadLink {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: royalblue;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    #downloadLink:hover {
+      background: darkblue;
+    }
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+  </style>
+</head>
+<body>
+
+  <h1>CSV Template for Jeopardy Board</h1>
+
+  <p class="instructions">Create a CSV using this template, then select "Choose File" on the home page to upload your clues and create the Jeopardy board. You can copy+paste these answers and questions into Excel or select "Download CSV".</p>
+  <p class="instructions"><strong>Note:</strong> The board is designed to be 6 categories, each with 5 answers/questions.</p>
+
+
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Amount</th>
+        <th>Question</th>
+        <th>Answer</th>
+      </tr>
+    </thead>
+    <tbody id="templateBody">
+      <!-- JavaScript will populate this -->
+    </tbody>
+  </table>
+
+  <a href="#" id="downloadLink" download="jeopardy_template.csv">Download CSV</a>
+
+  <footer>
+    <a href="index.html">← Back to Game</a>
+  </footer>
+
+  <script>
+    const templateData = [
+      { category: "History", amount: 100, question: "He was the first president of the United States.", answer: "George Washington" },
+      { category: "History", amount: 200, question: "The American Civil War started in this year", answer: "1861" },
+      { category: "Science", amount: 100, question: "This is the chemical symbol for water.", answer: "H₂O" },
+      { category: "Science", amount: 200, question: "This is known as the Red Planet.", answer: "Mars" },
+      { category: "Literature", amount: 100, question: "He wrote 'Romeo and Juliet'.", answer: "William Shakespeare" },
+      { category: "Literature", amount: 200, question: "This is the title of the first Harry Potter book.", answer: "Harry Potter and the Sorcerer's Stone" },
+      { category: "Sports", amount: 100, question: "There are this many players are on a basketball team.", answer: "5" },
+      { category: "Sports", amount: 200, question: "This sport uses a puck.", answer: "Hockey" },
+      { category: "Geography", amount: 100, question: "This city is the capital of France.", answer: "Paris" },
+      { category: "Geography", amount: 200, question: "Egypt is located in this continent.", answer: "Africa" },
+      { category: "Movies", amount: 100, question: "He directed 'Jurassic Park'.", answer: "Steven Spielberg" },
+      { category: "Movies", amount: 200, question: "This movie features the song 'Let It Go'.", answer: "Frozen" },
+    ];
+
+    // Populate the table
+    const tbody = document.getElementById('templateBody');
+    templateData.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.category}</td>
+        <td>${row.amount}</td>
+        <td>${row.question}</td>
+        <td>${row.answer}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Generate CSV string
+    const csvContent = [
+      ['Category', 'Amount', 'Question', 'Answer'],
+      ...templateData.map(row => [
+        row.category,
+        row.amount,
+        `"${row.question.replace(/"/g, '""')}"`, // Escape quotes
+        `"${row.answer.replace(/"/g, '""')}"`
+      ])
+    ].map(e => e.join(',')).join('\n');
+
+    // Set download link
+    const downloadLink = document.getElementById('downloadLink');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    downloadLink.href = url;
+  </script>
+
+</body>
+</html>

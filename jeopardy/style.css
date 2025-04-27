@@ -1,0 +1,47 @@
+body {
+  position: relative;
+  min-height: 100vh; /* at least full viewport height */
+  margin: 0;
+  padding-bottom: 3rem; /* make room for the footer */
+  box-sizing: border-box;
+}
+
+#upload {
+  padding: 2rem;
+}
+
+.square {
+  background: navy;
+  color: white;
+  font-size: 1.5rem;
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid white;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.square.asked {
+  background: gray;
+}
+
+.templateLinks {
+/*  position: absolute;
+  bottom: 1rem;
+  padding-left: 1rem;*/
+  text-decoration: none;
+  font-size: 0.9rem;
+  color: black;
+}
+
+footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #fff;
+  text-align: center;
+  padding: 1rem;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+  font-size: 1rem;
+}

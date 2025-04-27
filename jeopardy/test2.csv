@@ -1,0 +1,13 @@
+Category,Amount,Question,Answer
+History,100,"Who was the first president of the United States?","George Washington"
+History,200,"What year did the American Civil War start?","1861"
+Science,100,"What is the chemical symbol for water?","H₂O"
+Science,200,"What planet is known as the Red Planet?","Mars"
+Literature,100,"Who wrote 'Romeo and Juliet'?","William Shakespeare"
+Literature,200,"What is the title of the first Harry Potter book?","Harry Potter and the Sorcerer's Stone"
+Sports,100,"How many players are on a basketball team?","5"
+Sports,200,"What sport uses a puck?","Hockey"
+Geography,100,"What is the capital of France?","Paris"
+Geography,200,"Which continent is Egypt in?","Africa"
+Movies,100,"Who directed 'Jurassic Park'?","Steven Spielberg"
+Movies,200,"What movie features the song 'Let It Go'?","Frozen"
