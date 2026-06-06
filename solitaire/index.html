@@ -21,9 +21,13 @@
     }
 
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body {
+    height: 100%;
+    overscroll-behavior: none;
+    }
     body {
       margin: 0;
+      overflow: hidden;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       background: radial-gradient(circle at 40% 30%, #0c7a4a, var(--felt));
       color: #fff;
@@ -31,11 +35,13 @@
 
     .app {
       max-width: 1200px;
+      height: 100vh;
       margin: 0 auto;
       padding: 24px 16px 56px;
       display: grid;
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto auto 1fr;
       gap: 20px;
+      touch-action: none;
     }
 
     header {
@@ -112,6 +118,7 @@
 
     /* Card */
     .card {
+      touch-action: none;
       width: 90px; height: 126px;
       border-radius: 10px;
       background: var(--card);
@@ -667,11 +674,37 @@
     document.addEventListener('touchstart', (e) => {
       const el = e.target.closest('.card');
       if (!el) return;
-      // On touch, start drag immediately (long-press thresholds vary)
+
+      e.preventDefault();
       startDrag(e, el);
-    }, {passive:true});
-    document.addEventListener('touchmove', (e) => { if (drag) moveGhost(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
-    document.addEventListener('touchend', endDrag);
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!drag) return;
+
+      e.preventDefault();
+      moveGhost(
+        e.touches[0].clientX,
+        e.touches[0].clientY
+      );
+    }, { passive: false });
+
+    document.addEventListener('touchend', (e) => {
+      if (drag) e.preventDefault();
+      endDrag(e);
+    }, { passive: false });
+
+    document.addEventListener('gesturestart', (e) => {
+      e.preventDefault();
+    });
+
+    document.addEventListener('gesturechange', (e) => {
+      e.preventDefault();
+    });
+
+    document.addEventListener('gestureend', (e) => {
+      e.preventDefault();
+    });
 
     // Extra guards to avoid unwanted selections/drag images
     document.addEventListener('dragstart', (e) => { if (e.target.closest && e.target.closest('.card')) e.preventDefault(); });
