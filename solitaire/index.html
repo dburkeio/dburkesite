@@ -187,7 +187,7 @@
 <body>
   <div class="app" role="application" aria-label="Klondike Solitaire board">
     <header>
-      <h1>Klondike Solitaire</h1>
+      <h1>Klondike Solitaire (6/6/2026)</h1>
       <div class="controls">
         <button id="newGameBtn" title="Deal a fresh game">New Deal</button>
       </div>
@@ -713,6 +713,10 @@
 
     // Click handlers for stock & simple auto moves
     stockEl.addEventListener('click', drawFromStock);
+    stockEl.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      drawFromStock();
+    }, { passive: false });
 
     // Double-click a face-up card to try sending to a legal foundation
     document.addEventListener('dblclick', (e) => {
