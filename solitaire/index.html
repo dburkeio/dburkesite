@@ -388,12 +388,21 @@
         colEl.innerHTML = '';
         colEl.dataset.pileType = 'tableau';
         colEl.dataset.pileIndex = String(colIdx);
+
         const pile = state.tableau[colIdx];
+        let y = 0;
+
         pile.forEach((card, rowIdx) => {
-          const el = cardElement(card, {pileType:'tableau', pileIndex:colIdx, cardIndex:rowIdx});
-          const offset = card.faceUp ? 26 : 16; // bigger offset for face-up
-          el.style.top = `${rowIdx * offset}px`;
+          const el = cardElement(card, {
+            pileType: 'tableau',
+            pileIndex: colIdx,
+            cardIndex: rowIdx
+          });
+
+          el.style.top = `${y}px`;
           colEl.appendChild(el);
+
+          y += card.faceUp ? 32 : 10;
         });
       });
       // Win check: all four foundations have 13 cards
