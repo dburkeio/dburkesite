@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<!-- saved from url=(0028)https://dburke.io/solitaire/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Klondike Solitaire</title>
+  <style>
+    :root {
+      --green: #0b5; /* table felt */
+      --felt: #0a6b3f;
+      --card: #ffffff;
+      --card-border: #d1d5db;
+      --shadow: rgba(0,0,0,.15);
+      --face-down: #1e3a8a; /* blue back */
+      --face-down-accent: #93c5fd;
+      --text: #111827;
+      --heart: #dc2626; /* red */
+      --diamond: #dc2626;
+      --club: #111827;   /* black */
+      --spade: #111827;  /* black */
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(circle at 40% 30%, #0c7a4a, var(--felt));
+      color: #fff;
+    }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 16px 56px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    h1 { font-size: 20px; margin: 0; font-weight: 700; letter-spacing: .3px; }
+
+    .controls { display: flex; gap: 8px; }
+    button {
+      border: none;
+      background: #f9fafb;
+      color: #111827;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      box-shadow: 0 2px 6px var(--shadow);
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(.96); }
+
+    /* Top row: Stock, Waste, Foundations */
+    .top-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr) repeat(4, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .pile-label {
+      font-size: 12px;
+      opacity: .9;
+      margin-bottom: 8px;
+    }
+
+    .pile {
+      width: 90px; height: 126px; /* poker card aspect ratio ~ 2.5" x 3.5" */
+      border-radius: 10px;
+      position: relative;
+      box-shadow: 0 4px 12px var(--shadow);
+      background: rgba(255,255,255,.06);
+      border: 2px dashed rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      user-select: none;
+    }
+
+    .pile.stackable { border-style: solid; border-color: rgba(255,255,255,.16); }
+
+    .stock, .waste, .foundation, .tableau-pile { position: relative; }
+
+    .waste .card { left: 0; }
+
+    .foundation .hint { font-size: 28px; opacity: .4; }
+
+    /* Tableau grid */
+    .tableau {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .tableau-pile {
+      width: 90px; min-height: 300px; /* gives room for fan */
+      border-radius: 10px;
+      background: rgba(255,255,255,.04);
+      border: 2px dashed rgba(255,255,255,.16);
+      box-shadow: 0 4px 12px var(--shadow);
+      position: relative;
+      padding-top: 6px;
+    }
+
+    /* Card */
+    .card {
+      width: 90px; height: 126px;
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      position: absolute;
+      left: 0; top: 0;
+      box-shadow: 0 6px 14px var(--shadow);
+      transition: transform .1s ease;
+    }
+
+    .card.face-down { background: linear-gradient(135deg, var(--face-down), #0b1f5e); border-color: rgba(255,255,255,.25); }
+    .card.face-down::before {
+      content: "";
+      position: absolute; inset: 10px;
+      border: 2px solid var(--face-down-accent);
+      border-radius: 8px;
+      opacity: .8;
+    }
+
+    .card-content { display: grid; grid-template-rows: auto 1fr auto; height: 100%; padding: 8px; }
+
+    .rank-suit { font-weight: 800; font-size: 18px; line-height: 1; }
+    .suit-red { color: var(--heart); }
+    .suit-black { color: var(--text); }
+
+    .corner.top { align-self: start; justify-self: start; }
+    .corner.bottom { align-self: end; justify-self: end; transform: rotate(180deg); }
+
+    .pips { display: flex; align-items: center; justify-content: center; font-size: 28px; opacity: .9; }
+
+    /* Spacing for fanned tableau stacks */
+    .tableau-pile .card { position: absolute; }
+    .tableau-pile .card.face-down { /* smaller fan for face-down */ }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .pile, .card, .tableau-pile { width: 72px; }
+      .pile, .card { height: 100px; }
+      .tableau-pile { min-height: 240px; }
+      .pips { font-size: 22px; }
+    }
+
+    @media (max-width: 720px) {
+      .top-row { grid-template-columns: repeat(7, 1fr); }
+      .pile, .card, .tableau-pile { width: 64px; }
+      .pile, .card { height: 90px; }
+      .tableau-pile { min-height: 220px; }
+    }
+      /* Prevent text selection on cards while clicking/dragging */
+    .card, .card * { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+      /* Win animation overlay */
+    .win-overlay { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    .confetti { position: absolute; font-size: 24px; opacity: 0; animation: floatUp 1800ms ease-in forwards; text-shadow: 0 2px 8px rgba(0,0,0,.35); }
+    @keyframes floatUp {
+      0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translateY(-110vh) rotate(540deg) scale(1.1); opacity: 0; }
+    }
+      /* Prevent text selection on cards while clicking/dragging */
+    .card, .card * { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+    /* Hide the source stack while dragging so it looks like it moved */
+    .is-drag-hidden { visibility: hidden; }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Klondike Solitaire board">
+    <header>
+      <h1>Klondike Solitaire</h1>
+      <div class="controls">
+        <button id="newGameBtn" title="Deal a fresh game">New Deal</button>
+      </div>
+    </header>
+
+    <!-- Top Row: Stock, Waste, Foundations -->
+    <section class="top-row" aria-label="Top row with stock, waste, and four foundations">
+      <div>
+        <div class="pile-label">Stock</div>
+        <div id="stock" class="pile stock" aria-label="Stock pile" data-pile-type="stock"><div class="card face-down"></div></div>
+      </div>
+      <div>
+        <div class="pile-label">Waste</div>
+        <div id="waste" class="pile waste" aria-label="Waste pile" data-pile-type="waste"></div>
+      </div>
+      <div></div>
+      <div>
+        <div class="pile-label">Foundation ♠</div>
+        <div id="foundation-0" class="pile foundation stackable" aria-label="Spade foundation" data-pile-type="foundation" data-pile-index="0"><span class="hint">♠</span></div>
+      </div>
+      <div>
+        <div class="pile-label">Foundation ♥</div>
+        <div id="foundation-1" class="pile foundation stackable" aria-label="Heart foundation" data-pile-type="foundation" data-pile-index="1"><span class="hint">♥</span></div>
+      </div>
+      <div>
+        <div class="pile-label">Foundation ♦</div>
+        <div id="foundation-2" class="pile foundation stackable" aria-label="Diamond foundation" data-pile-type="foundation" data-pile-index="2"><span class="hint">♦</span></div>
+      </div>
+      <div>
+        <div class="pile-label">Foundation ♣</div>
+        <div id="foundation-3" class="pile foundation stackable" aria-label="Club foundation" data-pile-type="foundation" data-pile-index="3"><span class="hint">♣</span></div>
+      </div>
+    </section>
+
+    <!-- Tableau: 7 piles -->
+    <section class="tableau" aria-label="Tableau with seven piles">
+      <div class="tableau-pile" id="t0" aria-label="Tableau pile 1" data-pile-type="tableau" data-pile-index="0"><div class="card" data-suit="♠" data-rank="4" data-id="4♠" data-pile-type="tableau" data-pile-index="0" data-card-index="0" role="img" aria-label="4 of spades " style="top: 0px;">
+          <div class="card-content">
+            <div class="corner top">
+              <div class="rank-suit suit-black">4♠</div>
+            </div>
+            <div class="pips suit-black">♠</div>
+            <div class="corner bottom">
+              <div class="rank-suit suit-black">4♠</div>
+            </div>
+          </div></div></div>
+      <div class="tableau-pile" id="t1" aria-label="Tableau pile 2" data-pile-type="tableau" data-pile-index="1"><div class="card face-down" data-suit="♦" data-rank="4" data-id="4♦" data-pile-type="tableau" data-pile-index="1" data-card-index="0" role="img" aria-label="4 of diamonds (face-down)" style="top: 0px;"></div><div class="card" data-suit="♣" data-rank="Q" data-id="Q♣" data-pile-type="tableau" data-pile-index="1" data-card-index="1" role="img" aria-label="Q of clubs " style="top: 26px;">
+          <div class="card-content">
+            <div class="corner top">
+              <div class="rank-suit suit-black">Q♣</div>
+            </div>
+            <div class="pips suit-black">♣</div>
+            <div class="corner bottom">
+              <div class="rank-suit suit-black">Q♣</div>
+            </div>
+          </div></div></div>
+      <div class="tableau-pile" id="t2" aria-label="Tableau pile 3" data-pile-type="tableau" data-pile-index="2"><div class="card face-down" data-suit="♦" data-rank="J" data-id="J♦" data-pile-type="tableau" data-pile-index="2" data-card-index="0" role="img" aria-label="J of diamonds (face-down)" style="top: 0px;"></div><div class="card face-down" data-suit="♣" data-rank="J" data-id="J♣" data-pile-type="tableau" data-pile-index="2" data-card-index="1" role="img" aria-label="J of clubs (face-down)" style="top: 16px;"></div><div class="card" data-suit="♣" data-rank="3" data-id="3♣" data-pile-type="tableau" data-pile-index="2" data-card-index="2" role="img" aria-label="3 of clubs " style="top: 52px;">
+          <div class="card-content">
+            <div class="corner top">
+              <div class="rank-suit suit-black">3♣</div>
+            </div>
+            <div class="pips suit-black">♣</div>
+            <div class="corner bottom">
+              <div class="rank-suit suit-black">3♣</div>
+            </div>
+          </div></div></div>
+      <div class="tableau-pile" id="t3" aria-label="Tableau pile 4" data-pile-type="tableau" data-pile-index="3"><div class="card face-down" data-suit="♣" data-rank="10" data-id="10♣" data-pile-type="tableau" data-pile-index="3" data-card-index="0" role="img" aria-label="10 of clubs (face-down)" style="top: 0px;"></div><div class="card face-down" data-suit="♦" data-rank="Q" data-id="Q♦" data-pile-type="tableau" data-pile-index="3" data-card-index="1" role="img" aria-label="Q of diamonds (face-down)" style="top: 16px;"></div><div class="card face-down" data-suit="♦" data-rank="6" data-id="6♦" data-pile-type="tableau" data-pile-index="3" data-card-index="2" role="img" aria-label="6 of diamonds (face-down)" style="top: 32px;"></div><div class="card" data-suit="♦" data-rank="9" data-id="9♦" data-pile-type="tableau" data-pile-index="3" data-card-index="3" role="img" aria-label="9 of diamonds " style="top: 78px;">
+          <div class="card-content">
+            <div class="corner top">
+              <div class="rank-suit suit-red">9♦</div>
+            </div>
+            <div class="pips suit-red">♦</div>
+            <div class="corner bottom">
+              <div class="rank-suit suit-red">9♦</div>
+            </div>
+          </div></div></div>
+      <div class="tableau-pile" id="t4" aria-label="Tableau pile 5" data-pile-type="tableau" data-pile-index="4"><div class="card face-down" data-suit="♥" data-rank="7" data-id="7♥" data-pile-type="tableau" data-pile-index="4" data-card-index="0" role="img" aria-label="7 of hearts (face-down)" style="top: 0px;"></div><div class="card face-down" data-suit="♥" data-rank="2" data-id="2♥" data-pile-type="tableau" data-pile-index="4" data-card-index="1" role="img" aria-label="2 of hearts (face-down)" style="top: 16px;"></div><div class="card face-down" data-suit="♣" data-rank="K" data-id="K♣" data-pile-type="tableau" data-pile-index="4" data-card-index="2" role="img" aria-label="K of clubs (face-down)" style="top: 32px;"></div><div class="card face-down" data-suit="♠" data-rank="5" data-id="5♠" data-pile-type="tableau" data-pile-index="4" data-card-index="3" role="img" aria-label="5 of spades (face-down)" style="top: 48px;"></div><div class="card" data-suit="♦" data-rank="7" data-id="7♦" data-pile-type="tableau" data-pile-index="4" data-card-index="4" role="img" aria-label="7 of diamonds " style="top: 104px;">
+          <div class="card-content">
+            <div class="corner top">
+              <div class="rank-suit suit-red">7♦</div>
+            </div>
+            <div class="pips suit-red">♦</div>
+            <div class="corner bottom">
+              <div class="rank-suit suit-red">7♦</div>
+            </div>
+          </div></div></div>
+      <div class="tableau-pile" id="t5" aria-label="Tableau pile 6" data-pile-type="tableau" data-pile-index="5"><div class="card face-down" data-suit="♣" data-rank="A" data-id="A♣" data-pile-type="tableau" data-pile-index="5" data-card-index="0" role="img" aria-label="A of clubs (face-down)" style="top: 0px;"></div><div class="card face-down" data-suit="♠" data-rank="K" data-id="K♠" data-pile-type="tableau" data-pile-index="5" data-card-index="1" role="img" aria-label="K of spades (face-down)" style="top: 16px;"></div><div class="card face-down" data-suit="♠" data-rank="2" data-id="2♠" data-pile-type="tableau" data-pile-index="5" data-card-index="2" role="img" aria-label="2 of spades (face-down)" style="top: 32px;"></div><div class="card face-down" data-suit="♠" data-rank="A" data-id="A♠" data-pile-type="tableau" data-pile-index="5" data-card-index="3" role="img" aria-label="A of spades (face-down)" style="top: 48px;"></div><div class="card face-down" data-suit="♥" data-rank="6" data-id="6♥" data-pile-type="tableau" data-pile-index="5" data-card-index="4" role="img" aria-label="6 of hearts (face-down)" style="top: 64px;"></div><div class="card" data-suit="♥" data-rank="A" data-id="A♥" data-pile-type="tableau" data-pile-index="5" data-card-index="5" role="img" aria-label="A of hearts " style="top: 130px;">
+          <div class="card-content">
+            <div class="corner top">
+              <div class="rank-suit suit-red">A♥</div>
+            </div>
+            <div class="pips suit-red">♥</div>
+            <div class="corner bottom">
+              <div class="rank-suit suit-red">A♥</div>
+            </div>
+          </div></div></div>
+      <div class="tableau-pile" id="t6" aria-label="Tableau pile 7" data-pile-type="tableau" data-pile-index="6"><div class="card face-down" data-suit="♦" data-rank="8" data-id="8♦" data-pile-type="tableau" data-pile-index="6" data-card-index="0" role="img" aria-label="8 of diamonds (face-down)" style="top: 0px;"></div><div class="card face-down" data-suit="♦" data-rank="A" data-id="A♦" data-pile-type="tableau" data-pile-index="6" data-card-index="1" role="img" aria-label="A of diamonds (face-down)" style="top: 16px;"></div><div class="card face-down" data-suit="♣" data-rank="5" data-id="5♣" data-pile-type="tableau" data-pile-index="6" data-card-index="2" role="img" aria-label="5 of clubs (face-down)" style="top: 32px;"></div><div class="card face-down" data-suit="♥" data-rank="10" data-id="10♥" data-pile-type="tableau" data-pile-index="6" data-card-index="3" role="img" aria-label="10 of hearts (face-down)" style="top: 48px;"></div><div class="card face-down" data-suit="♦" data-rank="K" data-id="K♦" data-pile-type="tableau" data-pile-index="6" data-card-index="4" role="img" aria-label="K of diamonds (face-down)" style="top: 64px;"></div><div class="card face-down" data-suit="♦" data-rank="3" data-id="3♦" data-pile-type="tableau" data-pile-index="6" data-card-index="5" role="img" aria-label="3 of diamonds (face-down)" style="top: 80px;"></div><div class="card" data-suit="♣" data-rank="8" data-id="8♣" data-pile-type="tableau" data-pile-index="6" data-card-index="6" role="img" aria-label="8 of clubs " style="top: 156px;">
+          <div class="card-content">
+            <div class="corner top">
+              <div class="rank-suit suit-black">8♣</div>
+            </div>
+            <div class="pips suit-black">♣</div>
+            <div class="corner bottom">
+              <div class="rank-suit suit-black">8♣</div>
+            </div>
+          </div></div></div>
+    </section>
+  </div>
+
+  <script>
+    // --- Data model ---------------------------------------------------------
+    const SUITS = ["♠", "♥", "♦", "♣"]; // ♠ ♥ ♦ ♣
+    const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+    const RANK_TO_IDX = Object.fromEntries(RANKS.map((r,i)=>[r,i]));
+
+    function buildDeck() {
+      const deck = [];
+      for (let s = 0; s < SUITS.length; s++) {
+        for (let r = 0; r < RANKS.length; r++) {
+          deck.push({ suit: SUITS[s], rank: RANKS[r], faceUp: false, id: `${RANKS[r]}${SUITS[s]}`});
+        }
+      }
+      return deck;
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function isRed(s) { return s === '♥' || s === '♦'; }
+
+    // Deal the classic Klondike layout
+    function dealKlondike() {
+      const deck = shuffle(buildDeck());
+      const tableau = Array.from({length: 7}, () => []);
+
+      for (let col = 0; col < 7; col++) {
+        for (let row = 0; row <= col; row++) {
+          const card = deck.pop();
+          card.faceUp = (row === col);
+          tableau[col].push(card);
+        }
+      }
+
+      const stock = deck; // remaining cards are the stock (all face-down)
+      const waste = [];
+      const foundations = [[], [], [], []];
+
+      return { tableau, stock, waste, foundations };
+    }
+
+    // --- Rules --------------------------------------------------------------
+    function canPlaceOnTableau(card, targetCard) {
+      if (!targetCard) {
+        // Empty tableau requires a King
+        return card.rank === 'K';
+      }
+      return RANK_TO_IDX[card.rank] === RANK_TO_IDX[targetCard.rank] - 1 && (isRed(card.suit) !== isRed(targetCard.suit));
+    }
+
+    function canPlaceOnFoundation(card, foundationPile) {
+      if (!foundationPile.length) {
+        return card.rank === 'A';
+      }
+      const top = foundationPile[foundationPile.length - 1];
+      return card.suit === top.suit && RANK_TO_IDX[card.rank] === RANK_TO_IDX[top.rank] + 1;
+    }
+
+    // --- Rendering ----------------------------------------------------------
+    const stockEl = document.getElementById('stock');
+    const wasteEl = document.getElementById('waste');
+    const tableauEls = Array.from({length:7}, (_,i)=>document.getElementById(`t${i}`));
+
+    function cardElement(card, opts = {}) {
+      const el = document.createElement('div');
+      el.className = 'card' + (card.faceUp ? '' : ' face-down');
+      el.dataset.suit = card.suit;
+      el.dataset.rank = card.rank;
+      el.dataset.id = card.id;
+      if (opts.pileType) el.dataset.pileType = opts.pileType;
+      if (opts.pileIndex !== undefined) el.dataset.pileIndex = String(opts.pileIndex);
+      if (opts.cardIndex !== undefined) el.dataset.cardIndex = String(opts.cardIndex);
+
+      el.setAttribute('role','img');
+      el.setAttribute('aria-label', `${card.rank} of ${readableSuit(card.suit)} ${card.faceUp ? '' : '(face-down)'}`);
+
+      if (card.faceUp) {
+        const red = isRed(card.suit);
+        el.innerHTML = `
+          <div class="card-content">
+            <div class="corner top">
+              <div class="rank-suit ${red ? 'suit-red':'suit-black'}">${card.rank}${card.suit}</div>
+            </div>
+            <div class="pips ${red ? 'suit-red':'suit-black'}">${card.suit}</div>
+            <div class="corner bottom">
+              <div class="rank-suit ${red ? 'suit-red':'suit-black'}">${card.rank}${card.suit}</div>
+            </div>
+          </div>`;
+      }
+      return el;
+    }
+
+    function readableSuit(s) {
+      return ({'♠':'spades','♥':'hearts','♦':'diamonds','♣':'clubs'})[s] || 'unknown';
+    }
+
+    function render(state) {
+      // Stock: top back or recycle hint
+      stockEl.innerHTML = '';
+      stockEl.dataset.pileType = 'stock';
+      if (state.stock.length) {
+        const back = document.createElement('div');
+        back.className = 'card face-down';
+        stockEl.appendChild(back);
+      } else {
+        // subtle hint that you can recycle
+        const d = document.createElement('div');
+        d.className = 'pile-label';
+        d.style.position = 'absolute';
+        d.style.textAlign = 'center';
+        d.style.color = 'rgba(255,255,255,.7)';
+        d.textContent = '↻';
+        stockEl.appendChild(d);
+      }
+
+      // Waste: up to 3 fanned
+      wasteEl.innerHTML = '';
+      wasteEl.dataset.pileType = 'waste';
+      const show = state.waste.slice(-3);
+      show.forEach((c, i) => {
+        const el = cardElement({...c, faceUp: true}, {pileType:'waste', pileIndex:0, cardIndex: state.waste.length - show.length + i});
+        el.style.left = `${i * 14}px`;
+        wasteEl.appendChild(el);
+      });
+
+      // Foundations
+      for (let i = 0; i < 4; i++) {
+        const f = document.getElementById(`foundation-${i}`);
+        f.innerHTML = '';
+        f.dataset.pileType = 'foundation';
+        f.dataset.pileIndex = String(i);
+        const pile = state.foundations[i];
+        if (pile.length) {
+          const top = pile[pile.length - 1];
+          const el = cardElement({...top, faceUp: true}, {pileType:'foundation', pileIndex:i, cardIndex: pile.length - 1});
+          f.appendChild(el);
+        } else {
+          const hint = document.createElement('span');
+          hint.className = 'hint';
+          hint.textContent = ['♠','♥','♦','♣'][i];
+          f.appendChild(hint);
+        }
+      }
+
+      // Tableau
+      tableauEls.forEach((colEl, colIdx) => {
+        colEl.innerHTML = '';
+        colEl.dataset.pileType = 'tableau';
+        colEl.dataset.pileIndex = String(colIdx);
+        const pile = state.tableau[colIdx];
+        pile.forEach((card, rowIdx) => {
+          const el = cardElement(card, {pileType:'tableau', pileIndex:colIdx, cardIndex:rowIdx});
+          const offset = card.faceUp ? 26 : 16; // bigger offset for face-up
+          el.style.top = `${rowIdx * offset}px`;
+          colEl.appendChild(el);
+        });
+      });
+      // Win check: all four foundations have 13 cards
+      if (!hasWon && state.foundations.every(p => p.length === 13)) {
+        triggerWin();
+      }
+    }
+
+    // --- Game actions -------------------------------------------------------
+    function drawFromStock() {
+      if (gameState.stock.length) {
+        const n = Math.min(3, gameState.stock.length);
+        for (let i = 0; i < n; i++) {
+          const c = gameState.stock.pop();
+          c.faceUp = true;
+          gameState.waste.push(c);
+        }
+      } else if (gameState.waste.length) {
+        // recycle: flip entire waste back to stock preserving cycle order
+        while (gameState.waste.length) {
+          const c = gameState.waste.pop();
+          c.faceUp = false;
+          gameState.stock.push(c);
+        }
+      }
+      render(gameState);
+    }
+
+    function autoFlipIfNeeded(pile) {
+      if (pile.length && !pile[pile.length - 1].faceUp) {
+        pile[pile.length - 1].faceUp = true;
+      }
+    }
+
+    function moveCards(from, to) {
+      // from: {type, index, startIdx}
+      // to:   {type, index}
+      let moving = [];
+      if (from.type === 'tableau') {
+        moving = gameState.tableau[from.index].slice(from.startIdx);
+      } else if (from.type === 'waste') {
+        if (!gameState.waste.length) return false;
+        moving = [gameState.waste[gameState.waste.length - 1]];
+      } else if (from.type === 'foundation') {
+        if (!gameState.foundations[from.index].length) return false;
+        moving = [gameState.foundations[from.index][gameState.foundations[from.index].length - 1]];
+      }
+
+      const topCard = moving[0];
+
+      if (to.type === 'tableau') {
+        const pile = gameState.tableau[to.index];
+        const target = pile[pile.length - 1];
+        if (!topCard.faceUp) return false;
+        if (!canPlaceOnTableau(topCard, target)) return false;
+
+        // commit move
+        if (from.type === 'tableau') {
+          gameState.tableau[from.index] = gameState.tableau[from.index].slice(0, from.startIdx);
+          autoFlipIfNeeded(gameState.tableau[from.index]);
+        } else if (from.type === 'waste') {
+          gameState.waste.pop();
+        } else if (from.type === 'foundation') {
+          gameState.foundations[from.index].pop();
+        }
+        gameState.tableau[to.index].push(...moving);
+        render(gameState);
+        return true;
+      }
+
+      if (to.type === 'foundation') {
+        if (moving.length !== 1) return false;
+        const pile = gameState.foundations[to.index];
+        if (!canPlaceOnFoundation(topCard, pile)) return false;
+
+        if (from.type === 'tableau') {
+          gameState.tableau[from.index].pop(); // only one moves to foundation
+          autoFlipIfNeeded(gameState.tableau[from.index]);
+        } else if (from.type === 'waste') {
+          gameState.waste.pop();
+        } else if (from.type === 'foundation') {
+          return false; // no moving foundation-to-foundation directly
+        }
+        pile.push(topCard);
+        render(gameState);
+        return true;
+      }
+
+      return false;
+    }
+
+    // --- Win animation ------------------------------------------------------
+    function triggerWin() {
+      hasWon = true;
+      const overlay = document.createElement('div');
+      overlay.className = 'win-overlay';
+      document.body.appendChild(overlay);
+
+      const symbols = ['♠','♥','♦','♣'];
+      const durationMs = 2200;
+      const spawnTotal = 140;
+      let spawned = 0;
+
+      const timer = setInterval(() => {
+        if (spawned >= spawnTotal) { clearInterval(timer); setTimeout(()=>overlay.remove(), durationMs + 400); return; }
+        spawnPiece(overlay, symbols[Math.floor(Math.random()*symbols.length)]);
+        spawned++;
+      }, 16);
+
+      document.querySelector('.app').animate([
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.01)' },
+        { transform: 'scale(1)' }
+      ], { duration: 1200, iterations: 2, easing: 'ease-in-out' });
+    }
+
+    function spawnPiece(overlay, char) {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      el.textContent = char;
+      const x = Math.random() * window.innerWidth;
+      const y = window.innerHeight + 20;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.fontSize = (18 + Math.random()*20) + 'px';
+      el.style.color = (char === '♥' || char === '♦') ? '#ef4444' : '#111827';
+      overlay.appendChild(el);
+    }
+
+    // --- Drag & drop (mouse / touch) ---------------------------------------
+    let drag = null; // {from:{type,index,startIdx}, ghost, offsetX, offsetY}
+    let pendingDrag = null; // set on mousedown; becomes real drag only after small movement
+
+    function hideSourceForDrag(from) {
+      if (from.type === 'tableau') {
+        const pileEl = document.querySelector(`.tableau-pile[data-pile-index="${from.index}"]`);
+        if (!pileEl) return;
+        const cards = pileEl.querySelectorAll('.card');
+        cards.forEach((el, idx) => { if (idx >= from.startIdx) el.classList.add('is-drag-hidden'); });
+      } else if (from.type === 'waste') {
+        const cards = wasteEl.querySelectorAll('.card');
+        const last = cards[cards.length - 1];
+        if (last) last.classList.add('is-drag-hidden');
+      } else if (from.type === 'foundation') {
+        const fEl = document.getElementById(`foundation-${from.index}`);
+        const c = fEl && fEl.querySelector('.card');
+        if (c) c.classList.add('is-drag-hidden');
+      }
+    }
+
+    function clearDragHidden() {
+      document.querySelectorAll('.is-drag-hidden').forEach(el => el.classList.remove('is-drag-hidden'));
+    }
+
+    function startDrag(e, targetCardEl) {
+      const pileType = targetCardEl.dataset.pileType;
+      const pileIndex = Number(targetCardEl.dataset.pileIndex);
+      const cardIndex = Number(targetCardEl.dataset.cardIndex);
+
+      // Only allow dragging face-up cards
+      if (targetCardEl.classList.contains('face-down')) return;
+
+      // Only top card for waste/foundation
+      if (pileType === 'waste' && cardIndex !== gameState.waste.length - 1) return;
+      if (pileType === 'foundation' && cardIndex !== gameState.foundations[pileIndex].length - 1) return;
+
+      // build ghost stack
+      const ghost = document.createElement('div');
+      ghost.style.position = 'fixed';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.zIndex = '9999';
+
+      let stack = [];
+      if (pileType === 'tableau') {
+        stack = gameState.tableau[pileIndex].slice(cardIndex);
+      } else if (pileType === 'waste') {
+        stack = [gameState.waste[gameState.waste.length - 1]];
+      } else if (pileType === 'foundation') {
+        stack = [gameState.foundations[pileIndex][gameState.foundations[pileIndex].length - 1]];
+      }
+
+      stack.forEach((c, i) => {
+        const el = cardElement({...c, faceUp:true});
+        el.style.position = 'absolute';
+        el.style.top = `${i * 26}px`;
+        ghost.appendChild(el);
+      });
+
+      document.body.appendChild(ghost);
+
+      const rect = targetCardEl.getBoundingClientRect();
+      const clientX = (e.touches? e.touches[0].clientX : e.clientX);
+      const clientY = (e.touches? e.touches[0].clientY : e.clientY);
+      const offsetX = clientX - rect.left;
+      const offsetY = clientY - rect.top;
+
+      drag = {
+        from: { type: pileType, index: pileIndex, startIdx: cardIndex },
+        ghost,
+        offsetX, offsetY
+      };
+      moveGhost(clientX, clientY);
+      hideSourceForDrag(drag.from);
+    }
+
+    function moveGhost(x, y) {
+      if (!drag) return;
+      drag.ghost.style.left = `${x - drag.offsetX}px`;
+      drag.ghost.style.top  = `${y - drag.offsetY}px`;
+    }
+
+    function endDrag(e) {
+      if (!drag) return;
+      const clientX = (e.changedTouches? e.changedTouches[0].clientX : e.clientX);
+      const clientY = (e.changedTouches? e.changedTouches[0].clientY : e.clientY);
+      const els = document.elementsFromPoint(clientX, clientY);
+      let drop = null;
+      for (const el of els) {
+        if (el.classList && el.classList.contains('tableau-pile')) {
+          drop = { type: 'tableau', index: Number(el.dataset.pileIndex) };
+          break;
+        }
+        if (el.id && el.id.startsWith('foundation-')) {
+          drop = { type: 'foundation', index: Number(el.dataset.pileIndex) };
+          break;
+        }
+      }
+
+      let moved = false;
+      if (drop) {
+        moved = !!moveCards(drag.from, drop);
+      }
+      if (!moved) {
+        // restore visibility if the move didn't happen
+        clearDragHidden();
+      }
+      drag.ghost.remove();
+      drag = null;
+    }
+
+    document.addEventListener('mousedown', (e) => {
+      const el = e.target.closest('.card');
+      if (!el) return;
+      // Don't start drag immediately — wait for small movement so double-click still works
+      pendingDrag = {
+        el,
+        startX: e.clientX,
+        startY: e.clientY,
+        started: false,
+        startEvent: e
+      };
+    });
+    document.addEventListener('mousemove', (e) => {
+      const THRESH = 6; // pixels before we treat as a drag
+      if (drag) {
+        moveGhost(e.clientX, e.clientY);
+        return;
+      }
+      if (pendingDrag && !pendingDrag.started) {
+        const dx = e.clientX - pendingDrag.startX;
+        const dy = e.clientY - pendingDrag.startY;
+        if (Math.hypot(dx, dy) > THRESH) {
+          // promote to real drag
+          startDrag(pendingDrag.startEvent, pendingDrag.el);
+          pendingDrag.started = true;
+        }
+      }
+    });
+    document.addEventListener('mouseup', (e) => {
+      if (drag) {
+        endDrag(e);
+      }
+      // If mouseup occurs without a drag, just clear pending state (click/dblclick will still fire)
+      pendingDrag = null;
+    });
+
+    // Touch support
+    document.addEventListener('touchstart', (e) => {
+      const el = e.target.closest('.card');
+      if (!el) return;
+      // On touch, start drag immediately (long-press thresholds vary)
+      startDrag(e, el);
+    }, {passive:true});
+    document.addEventListener('touchmove', (e) => { if (drag) moveGhost(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
+    document.addEventListener('touchend', endDrag);
+
+    // Extra guards to avoid unwanted selections/drag images
+    document.addEventListener('dragstart', (e) => { if (e.target.closest && e.target.closest('.card')) e.preventDefault(); });
+    document.addEventListener('selectstart', (e) => { if (e.target.closest && e.target.closest('.card')) e.preventDefault(); });
+    document.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.card')) e.preventDefault(); }, true);
+
+    // Click handlers for stock & simple auto moves
+    stockEl.addEventListener('click', drawFromStock);
+
+    // Double-click a face-up card to try sending to a legal foundation
+    document.addEventListener('dblclick', (e) => {
+      const el = e.target.closest('.card');
+      if (!el || el.classList.contains('face-down')) return;
+      const type = el.dataset.pileType;
+      const idx  = Number(el.dataset.pileIndex);
+      const cIdx = Number(el.dataset.cardIndex);
+
+      if (type === 'tableau') {
+        // only top card in its pile can auto-foundation
+        const pile = gameState.tableau[idx];
+        if (cIdx !== pile.length - 1) return;
+        const card = pile[cIdx];
+        for (let f = 0; f < 4; f++) {
+          if (canPlaceOnFoundation(card, gameState.foundations[f])) {
+            moveCards({type:'tableau', index: idx, startIdx: cIdx}, {type:'foundation', index: f});
+            return;
+          }
+        }
+      } else if (type === 'waste') {
+        const card = gameState.waste[gameState.waste.length - 1];
+        for (let f = 0; f < 4; f++) {
+          if (canPlaceOnFoundation(card, gameState.foundations[f])) {
+            moveCards({type:'waste', index: 0, startIdx: 0}, {type:'foundation', index: f});
+            return;
+          }
+        }
+      }
+    });
+
+    // --- Bootstrap ----------------------------------------------------------
+    let gameState = dealKlondike();
+    let hasWon = false;
+    render(gameState);
+
+    document.getElementById('newGameBtn').addEventListener('click', () => {
+      gameState = dealKlondike();
+      hasWon = false;
+      const existing = document.querySelector('.win-overlay');
+      if (existing) existing.remove();
+      render(gameState);
+    });
+  </script>
+<script defer="" src="./klondike_OG_files/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;e197cbfb992b4eb1a950a1849c534bca&quot;,&quot;r&quot;:1,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
+
+
+</body></html>
